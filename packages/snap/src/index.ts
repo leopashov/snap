@@ -17,9 +17,9 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   request,
 }) => {
   switch (request.method) {
-    case 'hello':
+    case 'get Bip44 account':
       // Get the account before returning the dialog
-      const account = await getAccount();
+      const account = await getBip44Account();
 
       // Use the retrieved address in the dialog
       return snap.request({
@@ -28,22 +28,29 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
           type: 'confirmation',
           content: panel([
             text(`Hello, **${origin}**!`),
-            text('This is me saying hi.'),
-            text(`Here's a dogecoin account: ${account.address}`),
+            text(`Here's a coinType 966 (Polygon) account: ${account.address}`),
           ]),
         },
       });
-    default:
-      throw new Error('Method not found.');
+
+    // case 'newSecret':
+    //   newSecret(state, website, neverSave);
+    //   return 'OK';
+
+    // case 'createId':
+    //   createId(state, website, neverSave);
+    //   return 'OK';
+    // default:
+    //   throw new Error('Method not found.');
   }
 };
 
-async function getAccount() {
+async function getBip44Account() {
   // Get the Dogecoin node, corresponding to the path m/44'/3'.
   const dogecoinNode = await snap.request({
     method: 'snap_getBip44Entropy',
     params: {
-      coinType: 3,
+      coinType: 966,
     },
   });
 
@@ -56,4 +63,155 @@ async function getAccount() {
   // Derive the second Dogecoin address, which has index 1.
   const secondAccount = deriveDogecoinAddress(1);
   return secondAccount;
+}
+
+function newSecret(
+  description: string,
+  bytesToProtect: Uint8Array,
+  helperIds: Array<DeRecId>,
+): DeRecSecret {
+  throw new Error('not implemented yet');
+}
+
+function createId(name: string, contact: string, address?: string): DeRecId {
+  return new DeRecId(name, contact, address);
+}
+
+class DeRecId {
+  name: string; // human-readable identification
+  contact: URL; // how to contact me outside the protocol, an email address, for example
+  address?: URL; // my transport address
+
+  constructor(name: string, contact: string, address?: string) {
+    this.name = name;
+    this.contact = new URL(contact);
+    this.address = address ? new URL(address) : undefined;
+  }
+
+  getName(): string {
+    return this.name;
+  }
+
+  getContact(): URL {
+    return this.contact;
+  }
+
+  getAddress(): URL | undefined {
+    return this.address;
+  }
+
+  equals(o: any): boolean {
+    if (this === o) return true;
+    if (!(o instanceof DeRecId)) return false;
+    return (
+      this.name === o.name &&
+      this.contact.toString() === o.contact.toString() &&
+      this.address?.toString() === o.address?.toString()
+    );
+  }
+
+  hashCode(): number {
+    let hash = this.name + this.contact.toString() + this.address?.toString();
+    // Simple string hash code function. You may replace this with your desired hash function.
+    return Array.from(hash).reduce(
+      (hashAccumulator, charVal) =>
+        charVal.charCodeAt(0) + ((hashAccumulator << 5) - hashAccumulator),
+      0,
+    );
+  }
+}
+
+export interface DeRecPairable {
+  // Your DeRecPairable method signatures here
+}
+
+export interface DeRecVersion {
+  // Your DeRecVersion method signatures here
+}
+
+export interface DeRecSecret {
+  /**
+   * Add helpers to this secret and block till the outcome of adding them is known
+   *
+   * @param helperIds a list of helper IDs to add
+   */
+  addHelpers(helperIds: DeRecId[]): void;
+
+  /**
+   * Add helpers to this secret asynchronously
+   *
+   * @param helperIds a list of futures for each of the helpers
+   */
+  addHelpersAsync(helperIds: DeRecId[]): Promise<DeRecPairable[]>;
+
+  /**
+   * List the helpers
+   *
+   * @return a list of helpers
+   */
+  getHelpers(): DeRecPairable[];
+
+  /**
+   * Remove each of the helperIds in the list, if a helperId in the list does not refer to a helper for this secret
+   * then it is ignored. Block till each of the removals has succeeded, or failed.
+   *
+   * @param helperIds a list of helper IDs
+   */
+  removeHelpers(helperIds: DeRecId[]): void;
+
+  /**
+   * Update a secret synchronously blocking till the outcome (success or fail) is known.
+   *
+   * @param bytesToProtect the bytes of the update
+   * @return the new Version
+   */
+  update(bytesToProtect: Uint8Array): DeRecVersion;
+
+  /**
+   * Update a secret asynchronously, cancelling any in-progress updates
+   *
+   * @param bytesToProtect the bytes of the update
+   * @return a Future which completes when the update is safe or when it is known to have failed
+   */
+  updateAsync(bytesToProtect: Uint8Array): Promise<DeRecVersion>;
+
+  /**
+   * get a list of versions of the secret
+   *
+   * @return a {@link Map} of versions
+   */
+  getVersions(): Map<number, DeRecVersion>;
+
+  /**
+   * Is the secret in a state where updates can safely be made and if it is not closed
+   *
+   * @return true if it is safe
+   */
+  isAvailable(): boolean;
+
+  /**
+   * Is the secret shut down
+   *
+   * @return true if it is shut down
+   */
+  isClosed(): boolean;
+
+  /**
+   * The unique id of the secret
+   *
+   * @return the id
+   */
+  getSecretId(): string;
+
+  /**
+   * A secret has a human-readable description as a memo for what the secret is for etc.
+   *
+   * @return the description
+   */
+  getDescription(): string;
+
+  /**
+   * Gracefully shut down the secret, i.e., unpair from all helpers.
+   */
+  close(): void;
 }

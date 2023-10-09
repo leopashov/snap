@@ -5,15 +5,17 @@ import {
   connectSnap,
   getSnap,
   isLocalSnap,
-  sendHello,
+  getBip44Account,
   shouldDisplayReconnectButton,
 } from '../utils';
 import {
   ConnectButton,
   InstallFlaskButton,
   ReconnectButton,
-  SendHelloButton,
+  getBip44AccountButton,
   Card,
+  SendHelloButton,
+  GetBip44AddressButton,
 } from '../components';
 import { defaultSnapOrigin } from '../config';
 
@@ -123,9 +125,9 @@ const Index = () => {
     }
   };
 
-  const handleSendHelloClick = async () => {
+  const handleGetBip44AccountClick = async () => {
     try {
-      await sendHello();
+      await getBip44Account();
     } catch (e) {
       console.error(e);
       dispatch({ type: MetamaskActions.SetError, payload: e });
@@ -191,12 +193,12 @@ const Index = () => {
         )}
         <Card
           content={{
-            title: 'Send Hello message',
+            title: 'show a bip44 account address',
             description:
               'Display a custom message within a confirmation screen in MetaMask.',
             button: (
-              <SendHelloButton
-                onClick={handleSendHelloClick}
+              <GetBip44AddressButton
+                onClick={handleGetBip44AccountClick}
                 disabled={!state.installedSnap}
               />
             ),
