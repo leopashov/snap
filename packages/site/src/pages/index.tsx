@@ -6,16 +6,20 @@ import {
   getSnap,
   isLocalSnap,
   getBip44Account,
+  getBip32Account,
   shouldDisplayReconnectButton,
+  getResponseFromAPI,
+  getMmAccount,
 } from '../utils';
 import {
   ConnectButton,
   InstallFlaskButton,
   ReconnectButton,
-  getBip44AccountButton,
   Card,
-  SendHelloButton,
   GetBip44AddressButton,
+  GetBip32AddressButton,
+  CallAPIButton,
+  MmAccountButton,
 } from '../components';
 import { defaultSnapOrigin } from '../config';
 
@@ -134,6 +138,33 @@ const Index = () => {
     }
   };
 
+  const handleGetBip32AccountClick = async () => {
+    try {
+      await getBip32Account();
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: MetamaskActions.SetError, payload: e });
+    }
+  };
+
+  const handleCallAPIClick = async () => {
+    try {
+      await getResponseFromAPI();
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: MetamaskActions.SetError, payload: e });
+    }
+  };
+
+  const handleGetMMAccountClick = async () => {
+    try {
+      await getMmAccount();
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: MetamaskActions.SetError, payload: e });
+    }
+  };
+
   return (
     <Container>
       <Heading>
@@ -199,6 +230,62 @@ const Index = () => {
             button: (
               <GetBip44AddressButton
                 onClick={handleGetBip44AccountClick}
+                disabled={!state.installedSnap}
+              />
+            ),
+          }}
+          disabled={!state.installedSnap}
+          fullWidth={
+            isMetaMaskReady &&
+            Boolean(state.installedSnap) &&
+            !shouldDisplayReconnectButton(state.installedSnap)
+          }
+        />
+        <Card
+          content={{
+            title: 'show a bip32 account address',
+            description:
+              'Display a custom message within a confirmation screen in MetaMask.',
+            button: (
+              <GetBip32AddressButton
+                onClick={handleGetBip32AccountClick}
+                disabled={!state.installedSnap}
+              />
+            ),
+          }}
+          disabled={!state.installedSnap}
+          fullWidth={
+            isMetaMaskReady &&
+            Boolean(state.installedSnap) &&
+            !shouldDisplayReconnectButton(state.installedSnap)
+          }
+        />
+        <Card
+          content={{
+            title: 'show a Metamask account address',
+            description:
+              'Display a Metamask derived Private/ Public key pair confirmation screen in MetaMask.',
+            button: (
+              <MmAccountButton
+                onClick={handleGetMMAccountClick}
+                disabled={!state.installedSnap}
+              />
+            ),
+          }}
+          disabled={!state.installedSnap}
+          fullWidth={
+            isMetaMaskReady &&
+            Boolean(state.installedSnap) &&
+            !shouldDisplayReconnectButton(state.installedSnap)
+          }
+        />
+        <Card
+          content={{
+            title: 'call API',
+            description: 'Call getUnreadCountFromAPI',
+            button: (
+              <CallAPIButton
+                onClick={handleCallAPIClick}
                 disabled={!state.installedSnap}
               />
             ),

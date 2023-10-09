@@ -66,4 +66,34 @@ export const getBip44Account = async () => {
   });
 };
 
+export const getBip32Account = async () => {
+  await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: {
+      snapId: defaultSnapOrigin,
+      request: { method: 'get Bip32 account' },
+    },
+  });
+};
+
+export const getMmAccount = async () => {
+  await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: {
+      snapId: defaultSnapOrigin,
+      request: { method: 'get MM account' },
+    },
+  });
+};
+
+export const getResponseFromAPI = async () => {
+  await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: {
+      snapId: defaultSnapOrigin,
+      request: { method: 'call API' },
+    },
+  });
+};
+
 export const isLocalSnap = (snapId: string) => snapId.startsWith('local:');

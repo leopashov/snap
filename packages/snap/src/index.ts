@@ -1,6 +1,6 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import { panel, text } from '@metamask/snaps-ui';
-import { getBIP44AddressKeyDeriver } from '@metamask/key-tree';
+import { getBIP44AddressKeyDeriver, SLIP10Node } from '@metamask/key-tree';
 
 /**
  * Handle incoming JSON-RPC requests, sent through `wallet_invokeSnap`.
@@ -17,9 +17,32 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   request,
 }) => {
   switch (request.method) {
+    case 'call API':
+      console.log('about to call getUnreadCountFromAPI');
+
+      // let callresponse = getUnreadCountFromAPI("$2a$10$fmgYRwXNLz6SPnIo.F/IEe90NwCIFOEdUUN9vr0w5J.O50o3ceCCy", "6522aef112a5d3765988dfe2")
+      // return callresponse
+      const callresponse = await getResponseFromAPI(
+        '$2a$10$fmgYRwXNLz6SPnIo.F/IEe90NwCIFOEdUUN9vr0w5J.O50o3ceCCy',
+        '6522aef112a5d3765988dfe2',
+      );
+
+      // getUnreadCountFromAPI("$2a$10$fmgYRwXNLz6SPnIo.F/IEe90NwCIFOEdUUN9vr0w5J.O50o3ceCCy", "6522aef112a5d3765988dfe2").then(callresponse => {
+      console.log('callresponse=' + callresponse);
+      return snap.request({
+        method: 'snap_dialog',
+        params: {
+          type: 'confirmation',
+          content: panel([
+            text(`Hello, **${origin}**!`),
+            text('Call response: ' + callresponse),
+          ]),
+        },
+      });
+
     case 'get Bip44 account':
       // Get the account before returning the dialog
-      const account = await getBip44Account();
+      const account44 = await getBip44Account();
 
       // Use the retrieved address in the dialog
       return snap.request({
@@ -28,7 +51,48 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
           type: 'confirmation',
           content: panel([
             text(`Hello, **${origin}**!`),
-            text(`Here's a coinType 966 (Polygon) account: ${account.address}`),
+            text(
+              `Here's a coinType 966 (Polygon) Bip44 account Public key: ${account44.address}`,
+            ),
+            text(`And the corresponding private key: ${account44.privateKey}`),
+          ]),
+        },
+      });
+
+    case 'get Bip32 account':
+      // Get the account before returning the dialog
+      const account32 = await getBip32Account();
+
+      // Use the retrieved address in the dialog
+      return snap.request({
+        method: 'snap_dialog',
+        params: {
+          type: 'confirmation',
+          content: panel([
+            text(`Hello, **${origin}**!`),
+            text(
+              `Here's a coinType 966 (Polygon) Bip32 account Public Key: ${account32.address}`,
+            ),
+            text(`And the corresponding Private Key: ${account32.privateKey}`),
+          ]),
+        },
+      });
+
+    case 'get MM account':
+      // Get the account before returning the dialog
+      const accountMM = await getMmAccount();
+
+      // Use the retrieved address in the dialog
+      return snap.request({
+        method: 'snap_dialog',
+        params: {
+          type: 'confirmation',
+          content: panel([
+            text(`Hello, **${origin}**!`),
+            text(
+              `Here's a coinType 966 (Polygon) Bip32 account Public Key: ${accountMM.address}`,
+            ),
+            text(`And the corresponding Private Key: ${accountMM.privateKey}`),
           ]),
         },
       });
@@ -45,9 +109,38 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   }
 };
 
+//get unread count from WalletChat API
+const getResponseFromAPI = async (apiKey: string, address: string) => {
+  let retVal = 0;
+
+  console.log('in getUnreadCountFromAPI');
+
+  await fetch(
+    //` https://api.v2.walletchat.fun/v1/get_unread_cnt/${address}`,
+    `https://api.jsonbin.io/v3/b/${address}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Access-Key': apiKey,
+        // Authorization: `Bearer ${apiKey}`,
+      },
+    },
+  )
+    .then((response) => response.json())
+    .then((json) => {
+      retVal = json.record.responseStatus;
+    })
+    .catch((error) => {
+      console.log('🚨[GET][bin] Error:', error);
+    });
+
+  return retVal;
+};
+
 async function getBip44Account() {
   // Get the Dogecoin node, corresponding to the path m/44'/3'.
-  const dogecoinNode = await snap.request({
+  const addressNode = await snap.request({
     method: 'snap_getBip44Entropy',
     params: {
       coinType: 966,
@@ -58,11 +151,52 @@ async function getBip44Account() {
    * Create a function that takes an index and returns an extended private key for m/44'/3'/0'/0/address_index.
    * The second parameter to getBIP44AddressKeyDeriver isn't passed. This sets account and changes to 0.
    */
-  const deriveDogecoinAddress = await getBIP44AddressKeyDeriver(dogecoinNode);
+  const deriveAddress = await getBIP44AddressKeyDeriver(addressNode);
 
   // Derive the second Dogecoin address, which has index 1.
-  const secondAccount = deriveDogecoinAddress(1);
+  const secondAccount = deriveAddress(0);
   return secondAccount;
+}
+
+async function getBip32Account() {
+  // Get the Dogecoin node, corresponding to the path m/44'/3'.
+  // xref coinType/ curves: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+  const addressNode = await snap.request({
+    method: 'snap_getBip32Entropy',
+    params: {
+      path: ['m', "44'", "966'"],
+      curve: 'secp256k1',
+    },
+  });
+
+  // Next, create an instance of a SLIP-10 node for the Dogecoin node.
+  const slip10Node = await SLIP10Node.fromJSON(addressNode);
+
+  // m / 44' / 3' / 0'
+  const accountKey0 = await slip10Node.derive(["bip32:0'"]);
+
+  // m / 44' / 3' / 1'
+  // const accountKey1 = await dogecoinSlip10Node.derive(["bip32:1'"]);
+  return accountKey0;
+}
+
+async function getMmAccount() {
+  const entropy = await snap.request({
+    method: 'snap_getEntropy',
+    params: {
+      version: 1,
+      salt: 'foo', // Optional
+    },
+  });
+  const deriveAddress = await getBIP44AddressKeyDeriver(entropy);
+
+  // These are BIP-44 nodes containing the extended private keys for
+  // the respective derivation paths.
+
+  // m / 44' / 3' / 0' / 0 / 0
+  const addressKey0 = await deriveAddress(0);
+
+  return addressKey0;
 }
 
 function newSecret(

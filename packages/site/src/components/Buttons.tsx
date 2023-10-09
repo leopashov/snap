@@ -95,7 +95,19 @@ export const ReconnectButton = (props: ComponentProps<typeof Button>) => {
 };
 
 export const GetBip44AddressButton = (props: ComponentProps<typeof Button>) => {
-  return <Button {...props}>Get address</Button>;
+  return <Button {...props}>Get bip44 address</Button>;
+};
+
+export const GetBip32AddressButton = (props: ComponentProps<typeof Button>) => {
+  return <Button {...props}>Get bip32 address</Button>;
+};
+
+export const MmAccountButton = (props: ComponentProps<typeof Button>) => {
+  return <Button {...props}>Get MM address</Button>;
+};
+
+export const CallAPIButton = (props: ComponentProps<typeof Button>) => {
+  return <Button {...props}>Call API</Button>;
 };
 
 export const HeaderButtons = ({
