@@ -61,20 +61,31 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
 
     case 'get Bip32 account':
       // Get the account before returning the dialog
-      const account32 = await getBip32Account();
+      const account32s = await getBip32Account();
+
+      // Generate a list of text messages for each address and key
+      const accountTexts = [];
+      for (const path in account32s) {
+        const publicKey = await (account32s as { [key: string]: SLIP10Node })[
+          path
+        ].address; // assuming getPublicKey is a method
+        const privateKey = await (account32s as { [key: string]: SLIP10Node })[
+          path
+        ].privateKey; // assuming getPrivateKey is a method
+
+        accountTexts.push(
+          text(`Path: ${path}`),
+          text(`Public Key: ${publicKey}`), // assuming the key is a Buffer and you want to display it as a hex string
+          text(`Private Key: ${privateKey}`),
+        );
+      }
 
       // Use the retrieved address in the dialog
       return snap.request({
         method: 'snap_dialog',
         params: {
           type: 'confirmation',
-          content: panel([
-            text(`Hello, **${origin}**!`),
-            text(
-              `Here's a coinType 966 (Polygon) Bip32 account Public Key: ${account32.address}`,
-            ),
-            text(`And the corresponding Private Key: ${account32.privateKey}`),
-          ]),
+          content: panel([text(`Hello, **${origin}**!`), ...accountTexts]),
         },
       });
 
@@ -164,7 +175,7 @@ async function getBip32Account() {
   const addressNode = await snap.request({
     method: 'snap_getBip32Entropy',
     params: {
-      path: ['m', "44'", "966'"],
+      path: ['m', "44'", "60'"],
       curve: 'secp256k1',
     },
   });
@@ -172,12 +183,25 @@ async function getBip32Account() {
   // Next, create an instance of a SLIP-10 node for the Dogecoin node.
   const slip10Node = await SLIP10Node.fromJSON(addressNode);
 
-  // m / 44' / 3' / 0'
+  // m / 44' / 966' / 0'
   const accountKey0 = await slip10Node.derive(["bip32:0'"]);
+  const accountKey00 = await accountKey0.derive(['bip32:0']);
+  const accountKey00_ = await accountKey0.derive(["bip32:0'"]);
+  const accountKey000 = await accountKey00.derive(['bip32:0']);
+  const accountKey000_ = await accountKey00.derive(["bip32:0'"]);
+  const accountKey0000 = await accountKey000.derive(['bip32:0']);
 
-  // m / 44' / 3' / 1'
+  // m / 44' / 966' / 1'
   // const accountKey1 = await dogecoinSlip10Node.derive(["bip32:1'"]);
-  return accountKey0;
+  const accounts = {
+    "m/44'/966'/0'": accountKey0,
+    "m/44'/966'/0'/0": accountKey00,
+    "m/44'/966'/0'/0'": accountKey00_,
+    "m/44'/966'/0'/0/0": accountKey000,
+    "m/44'/966'/0'/0/0'": accountKey000_,
+    "m/44'/966'/0'/0/0/0": accountKey0000,
+  };
+  return accounts;
 }
 
 async function getMmAccount() {
